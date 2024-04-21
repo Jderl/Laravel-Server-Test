@@ -4,7 +4,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\PostController;
-
+use App\Http\Controllers\UploadController;
 /*
 Route::middleware('auth:sanctum')->get('/user', function (Request $request) {
     return $request->user();
@@ -14,6 +14,9 @@ Route::middleware('auth:sanctum')->get('/user', function (Request $request) {
 Route::post('/register', [AuthController::class, 'register']);
 Route::post('/login', [AuthController::class, 'login']);
 Route::middleware('auth:sanctum')->get('/users', [AuthController::class, 'getAllUsers']);
+Route::middleware('auth:sanctum')->put('/users/update', [AuthController::class, 'update']);
+
+
 
 
 // Route to get post content
@@ -29,10 +32,15 @@ Route::get('/posts/popular', [PostController::class, 'getPopularContents']);
 Route::get('/posts/{postId}', [PostController::class, 'getPost']);
 
 // Route to create a new post
-Route::post('/posts', [PostController::class, 'createPost']);
+Route::post('/posts', [PostController::class, 'store']);
+
 
 // Route to update a post
 Route::put('/posts/{id}', [PostController::class, 'updatePost']);
 
 // Route to delete a post
 Route::delete('/posts/{id}', [PostController::class, 'deletePost']);
+
+
+// Route to upload file 
+Route::post('/upload', [UploadController::class, 'upload']);

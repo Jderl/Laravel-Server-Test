@@ -129,12 +129,39 @@ class PostController extends Controller
         }
     }
 
+    public function store(Request $request)
+    {
+        // Validate incoming request data
+        $validatedData = $request->validate([
+            'title' => 'required|string|max:255',
+            'slug' => 'required|string|unique:posts',
+            'cat' => 'required|string',
+            'img' => 'nullable',
+            'desc' => 'required|string',
+        ]);
+
+        // Create new post
+        $post = new Post();
+        $post->title = $validatedData['title'];
+        $post->slug = $validatedData['slug'];
+        $post->category = $validatedData['cat'];
+        $post->image_url = $validatedData['img'];
+        $post->description = $validatedData['desc'];
+        // Add any other fields you may have
+
+        // Save the post
+        $post->save();
+
+        // Return a response
+        return response()->json(['message' => 'Post created successfully'], 201);
+    }
+
     public function createPost(Request $request)
     {
         $validator = Validator::make($request->all(), [
             'userId' => 'required',
             'desc' => 'required',
-            'img' => 'required',
+            'img' => 'nullable',
             'title' => 'required',
             'slug' => 'required',
             'cat' => 'required',

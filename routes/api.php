@@ -33,8 +33,6 @@ Route::get('/posts/popular', [PostController::class, 'getPopularContents']);
 Route::get('/posts/{postId}', [PostController::class, 'getPost']);
 
 // Route to create a new post
-Route::post('/posts', [PostController::class, 'store']);
-//Route::post('/posts/create-post', [PostController::class, 'createPost']); 
 Route::post('/posts/create-post', [PostController::class, 'create']);
 
 

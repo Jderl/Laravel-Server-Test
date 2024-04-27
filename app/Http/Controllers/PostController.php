@@ -15,8 +15,8 @@ class PostController extends Controller
     public function getPostContent(Request $request)
     {
         try {
-            $userId = $request->user['userId'];
 
+            $userId = $request->user['userId'] ?? 13;
             $queryResult = Post::where('user_id', $userId)->orderBy('id', 'desc');
 
             // Pagination
@@ -28,18 +28,19 @@ class PostController extends Controller
             $totalPost = $queryResult->count();
             $numOfPage = ceil($totalPost / $limit);
 
+            // Retrieve posts for the current page
             $posts = $queryResult->skip($skip)->take($limit)->get();
 
             return response()->json([
                 'success' => true,
-                'message' => 'Content Loaded successfully',
+                'message' => 'Content loaded successfully',
                 'totalPost' => $totalPost,
                 'data' => $posts,
                 'page' => $page,
                 'numOfPage' => $numOfPage,
             ], 200);
         } catch (\Exception $error) {
-            return response()->json(['message' => $error->getMessage()], 404);
+            return response()->json(['message' => $error->getMessage()], 500);
         }
     }
 
@@ -131,79 +132,10 @@ class PostController extends Controller
         }
     }
 
-    public function store(Request $request)
-    {
-        // Validate incoming request data
-        $validatedData = $request->validate([
-            'title' => 'required|string|max:255',
-            'slug' => 'required|string|unique:posts',
-            'cat' => 'required|string',
-            //'img' => 'nullable',
-            'desc' => 'required|string',
-        ]);
-
-        // Create new post
-        $post = new Post();
-        $post->title = $validatedData['title'];
-        $post->slug = $validatedData['slug'];
-        $post->category = $validatedData['cat'];
-        // $post->image_url = $validatedData['img'];
-        $post->description = $validatedData['desc'];
-        // Add any other fields you may have
-
-        // Save the post
-        $post->save();
-
-        // Return a response
-        return response()->json(['message' => 'Post created successfully'], 201);
-    }
-    public function createPost(Request $request)
-    {
-        $validator = Validator::make($request->all(), [
-            'desc' => 'required',
-            'img' => 'nullable|image',
-            'title' => 'required',
-            'slug' => 'required',
-            'cat' => 'required',
-        ]);
-
-        if ($validator->fails()) {
-            return response()->json(['message' => $validator->errors()->first()], 400);
-        }
-
-        try {
-            // Get the authenticated user
-            $user = Auth::user();
-
-            // Handle file upload
-            $imgPath = null;
-            if ($request->hasFile('img')) {
-                $imgPath = $request->file('img')->store('images');
-            }
-
-            $post = Post::create([
-                'user_id' => $user->id, // Use the ID of the authenticated user
-                'desc' => $request->desc,
-                'img' => $imgPath,
-                'title' => $request->title,
-                'slug' => $request->slug,
-                'cat' => $request->cat,
-            ]);
-
-            return response()->json([
-                'success' => true,
-                'message' => 'Post created successfully',
-                'data' => $post,
-            ], 200);
-        } catch (\Exception $error) {
-            return response()->json(['message' => $error->getMessage()], 404);
-        }
-    }
-
     // Create
-   
-    /** */
-    public function create(Request $request)
+
+    /** 
+     public function create(Request $request)
     {
         try {
             // Set user ID to 15 if not provided in the request
@@ -240,6 +172,211 @@ class PostController extends Controller
                 $imageName = time() . '.' . $image->getClientOriginalExtension();
                 $image->move(public_path('images'), $imageName);
             }
+
+            // Create the post
+            $post = Post::create([
+                'title' => $title,
+                'slug' => $slug,
+                'desc' => $desc,
+                'img' => $imageName,
+                'cat' => $category,
+                'user_id' => $userId,
+            ]);
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Post created successfully',
+                'data' => $post,
+            ], 201);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => $e->getMessage(),
+            ], 500);
+        }
+    }
+
+     */
+
+    /**public function create(Request $request)
+    {
+        try {
+            // Get the last user ID from the database
+            $lastUserId = User::max('id');
+
+            // Set user ID to 15 if not provided in the request
+            $userId = $request->input('user_id', 15);
+
+            // Check if the user exists
+            if ($userId > 100 || $userId > $lastUserId) {
+                // If the provided user ID exceeds 100 or the last user ID, set it to the last user ID
+                $userId = $lastUserId;
+            }
+
+            $userExists = User::where('id', $userId)->exists();
+
+            if (!$userExists) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'User does not exist.',
+                ], 400);
+            }
+
+            // Retrieve post information from the request
+            $desc = $request->input('desc');
+            $title = $request->input('title');
+            $slug = $request->input('slug');
+            $image = $request->file('image');
+            $category = $request->input('category');
+
+            // Validate the request data
+            if (!$desc || !$title || !$slug || !$category) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'All fields except image are required.',
+                ], 400);
+            }
+
+            // Handle image upload
+            $imageName = null;
+            if ($image) {
+                $imageName = time() . '.' . $image->getClientOriginalExtension();
+                $image->move(public_path('images'), $imageName);
+            }
+
+            // Create the post
+            $post = Post::create([
+                'title' => $title,
+                'slug' => $slug,
+                'desc' => $desc,
+                'img' => $imageName,
+                'cat' => $category,
+                'user_id' => $userId,
+            ]);
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Post created successfully',
+                'data' => $post,
+            ], 201);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => $e->getMessage(),
+            ], 500);
+        }
+    }
+
+     */
+    /**  public function create(Request $request)
+    {
+        try {
+            // Get the last user ID from the database
+            $lastUserId = User::max('id');
+
+            // Set user ID to 15 if not provided in the request
+            $userId = $request->input('user_id', 13);
+
+            // Check if the user ID exceeds 100 or the last user ID, set it to the last user ID
+            if ($userId > 100 || $userId > $lastUserId) {
+                $userId = $lastUserId;
+            }
+
+            // Check if the user exists
+            $userExists = User::where('id', $userId)->exists();
+
+            if (!$userExists) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'User does not exist.',
+                ], 400);
+            }
+
+            // Retrieve post information from the request
+            $desc = $request->input('desc');
+            $title = $request->input('title');
+            $slug = $request->input('slug');
+            $image = $request->file('image');
+            $category = $request->input('category');
+
+            // Validate the request data
+            if (!$desc || !$title || !$slug || !$category || !$image) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'All fields including image are required.',
+                ], 400);
+            }
+
+            // Handle image upload
+            $imageName = time() . '.' . $image->getClientOriginalExtension();
+            $image->move(public_path('images'), $imageName);
+
+            // Create the post
+            $post = Post::create([
+                'title' => $title,
+                'slug' => $slug,
+                'desc' => $desc,
+                'img' => $imageName,
+                'cat' => $category,
+                'user_id' => $userId,
+            ]);
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Post created successfully',
+                'data' => $post,
+            ], 201);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => $e->getMessage(),
+            ], 500);
+        }
+    }
+     */
+
+
+    public function create(Request $request)
+    {
+        try {
+            // Get the last user ID from the database
+            $lastUserId = User::max('id');
+
+            // Set user ID to 15 if not provided in the request
+            $userId = $request->input('user_id', 13);
+
+            // Check if the user ID exceeds 100 or the last user ID, set it to the last user ID
+            if ($userId > 100 || $userId > $lastUserId) {
+                $userId = $lastUserId;
+            }
+
+            // Check if the user exists
+            $userExists = User::where('id', $userId)->exists();
+
+            if (!$userExists) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'User does not exist.',
+                ], 400);
+            }
+
+            // Retrieve post information from the request
+            $desc = $request->input('desc');
+            $title = $request->input('title');
+            $slug = $request->input('slug');
+            $image = $request->file('image');
+            $category = $request->input('category');
+
+            // Validate the request data
+            if (!$desc || !$title || !$slug || !$category || !$image) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'All fields including image are required.',
+                ], 400);
+            }
+
+            // Handle image upload
+            $imageName = $image->storeAs('public/images', $image->getClientOriginalName()); // Save image with original filename
 
             // Create the post
             $post = Post::create([

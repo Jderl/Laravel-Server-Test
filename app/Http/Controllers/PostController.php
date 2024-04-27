@@ -7,6 +7,8 @@ use App\Models\Post;
 use App\Models\User;
 use App\Models\View;
 use Illuminate\Support\Facades\Validator;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Storage;
 
 class PostController extends Controller
 {
@@ -136,7 +138,7 @@ class PostController extends Controller
             'title' => 'required|string|max:255',
             'slug' => 'required|string|unique:posts',
             'cat' => 'required|string',
-            'img' => 'nullable',
+            //'img' => 'nullable',
             'desc' => 'required|string',
         ]);
 
@@ -145,7 +147,7 @@ class PostController extends Controller
         $post->title = $validatedData['title'];
         $post->slug = $validatedData['slug'];
         $post->category = $validatedData['cat'];
-        $post->image_url = $validatedData['img'];
+        // $post->image_url = $validatedData['img'];
         $post->description = $validatedData['desc'];
         // Add any other fields you may have
 
@@ -155,13 +157,11 @@ class PostController extends Controller
         // Return a response
         return response()->json(['message' => 'Post created successfully'], 201);
     }
-
     public function createPost(Request $request)
     {
         $validator = Validator::make($request->all(), [
-            'userId' => 'required',
             'desc' => 'required',
-            'img' => 'nullable',
+            'img' => 'nullable|image',
             'title' => 'required',
             'slug' => 'required',
             'cat' => 'required',
@@ -172,10 +172,19 @@ class PostController extends Controller
         }
 
         try {
+            // Get the authenticated user
+            $user = Auth::user();
+
+            // Handle file upload
+            $imgPath = null;
+            if ($request->hasFile('img')) {
+                $imgPath = $request->file('img')->store('images');
+            }
+
             $post = Post::create([
-                'user_id' => $request->userId,
+                'user_id' => $user->id, // Use the ID of the authenticated user
                 'desc' => $request->desc,
-                'img' => $request->img,
+                'img' => $imgPath,
                 'title' => $request->title,
                 'slug' => $request->slug,
                 'cat' => $request->cat,
@@ -190,6 +199,71 @@ class PostController extends Controller
             return response()->json(['message' => $error->getMessage()], 404);
         }
     }
+
+    // Create
+   
+    /** */
+    public function create(Request $request)
+    {
+        try {
+            // Set user ID to 15 if not provided in the request
+            $userId = $request->input('user_id', 15);
+
+            // Check if the user exists
+            $userExists = User::where('id', $userId)->exists();
+
+            if (!$userExists) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'User does not exist.',
+                ], 400);
+            }
+
+            // Retrieve post information from the request
+            $desc = $request->input('desc');
+            $title = $request->input('title');
+            $slug = $request->input('slug');
+            $image = $request->file('image');
+            $category = $request->input('category');
+
+            // Validate the request data
+            if (!$desc || !$title || !$slug || !$category) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'All fields except image are required.',
+                ], 400);
+            }
+
+            // Handle image upload
+            $imageName = null;
+            if ($image) {
+                $imageName = time() . '.' . $image->getClientOriginalExtension();
+                $image->move(public_path('images'), $imageName);
+            }
+
+            // Create the post
+            $post = Post::create([
+                'title' => $title,
+                'slug' => $slug,
+                'desc' => $desc,
+                'img' => $imageName,
+                'cat' => $category,
+                'user_id' => $userId,
+            ]);
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Post created successfully',
+                'data' => $post,
+            ], 201);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => $e->getMessage(),
+            ], 500);
+        }
+    }
+
 
     public function updatePost(Request $request, $id)
     {
@@ -223,6 +297,67 @@ class PostController extends Controller
             ], 200);
         } catch (\Exception $error) {
             return response()->json(['message' => $error->getMessage()], 404);
+        }
+    }
+
+    public function getPaginatedPosts(Request $request)
+    {
+        try {
+            // Extract query parameters
+            $category = $request->query('cat', '');
+            $writerId = $request->query('writerId', '');
+            $page = $request->query('page', 1);
+
+            // Define limit per page
+            $limit = 10; // Adjust as needed
+
+            // Calculate offset
+            $offset = ($page - 1) * $limit;
+
+            // Query posts based on optional parameters
+            $query = Post::query();
+            if (!empty($category)) {
+                $query->where('cat', $category);
+            }
+            if (!empty($writerId)) {
+                $query->where('user_id', $writerId);
+            }
+
+            // Get total count of posts
+            $totalPost = $query->count();
+
+            // Get paginated posts
+            $posts = $query->skip($offset)->take($limit)->get();
+
+            return response()->json([
+                'success' => true,
+                'data' => $posts,
+                'page' => $page,
+                'totalPost' => $totalPost,
+                'numOfPages' => ceil($totalPost / $limit),
+            ], 200);
+        } catch (\Exception $error) {
+            return response()->json(['message' => $error->getMessage()], 500);
+        }
+    }
+
+    public function getSinglePost($id)
+    {
+        try {
+            $post = Post::findOrFail($id);
+            return response()->json(['success' => true, 'data' => $post], 200);
+        } catch (\Exception $error) {
+            return response()->json(['message' => $error->getMessage()], 404);
+        }
+    }
+    public function getUserPosts()
+    {
+        try {
+            $user = Auth::user();
+            $posts = Post::where('user_id', $user->id)->get();
+            return response()->json(['success' => true, 'data' => $posts], 200);
+        } catch (\Exception $error) {
+            return response()->json(['message' => $error->getMessage()], 500);
         }
     }
 }
